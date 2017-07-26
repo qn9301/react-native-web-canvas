@@ -1,5 +1,5 @@
 /**
- * 基于webview的
+ * 基于webview的canvas画板
  *
  */
 import React, { Component } from 'react';
@@ -32,7 +32,6 @@ var html =
     var _width,_height;
     window.document.addEventListener('message', function (e){
         var obj = JSON.parse(e.data);
-        alert(obj.action);
         switch (parseInt(obj.action)){
           case 1:
               /* 铅笔 */
@@ -272,7 +271,7 @@ export default class WebCanvas extends Component {
 
   render() {
     return (
-      <View style={[styles.container, {width:this.state.width, height:this.state.height}]}>  
+      <View style={{width:this.state.width, height:this.state.height}}>  
         <WebView 
           style={{width:this.state.width, height:this.state.height}}
           ref = {(w) => {this.webview = w}}
@@ -284,18 +283,8 @@ export default class WebCanvas extends Component {
           automaticallyAdjustContentInsets={true}
           scalesPageToFit={false}
           />
-          <TouchableOpacity onPress={()=>this.webview.reload()}>
-            <Text>刷新</Text>
-          </TouchableOpacity>
       </View>
     );
   }
 }
 
-const styles = StyleSheet.create({ 
-    container: {  
-        alignItems: 'flex-start',  
-        backgroundColor: 'green',
-
-    }
-});  
