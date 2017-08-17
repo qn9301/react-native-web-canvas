@@ -1,6 +1,6 @@
 /**
- * 基于webview的canvas画板
- *
+ * Created by Zyf on 2017/8/2.
+ * 基于webview的Canvas画布
  */
 import React, { Component } from 'react';
 import {
@@ -24,7 +24,7 @@ var html =
   </style>
 </head> 
 <body>
-  <canvas id='can' style='border: 1px solid black'>
+  <canvas id='can'>
     您的浏览器不支持canvas
   </canvas>
   <script>
@@ -57,6 +57,10 @@ var html =
               /* 返回base64 */
               returnBase64();
               break;
+          case -1:
+              /* 初始化画板 */
+              ctx.clearRect(0,0, _width, _height);
+              break;
         }
     });
 
@@ -79,32 +83,25 @@ var html =
             e = e.originalEvent.touches[0];
             ox2 = e.screenX;
             oy2 = e.screenY;
-            if (isclean === false){
-                drawState = true;
-                var x = e.clientX -  $can.offset().left;
-                var y = e.clientY -  $can.offset().top + $(document).scrollTop();
-                lastX = x;
-                lastY = y;
-                draw(x, y, true);
-                return false;
-            }
             drawState = true;
+            drawState = true;
+            var x = e.clientX -  $can.offset().left;
+            var y = e.clientY -  $can.offset().top + $(document).scrollTop();
+            lastX = x;
+            lastY = y;
+            draw(x, y, true, isclean);
+            return false;
         });
         $can.on("touchmove", function (ev){
             e = ev.originalEvent.touches[0];
             if (drawState){
-                if (isclean){
-                    cleanRect(e.clientX - $can.offset().left, 
-                        e.clientY - $can.offset().top + $(document).scrollTop(),true);
-                }else{
-                    if (lastX == null || lastY == null ){
-                        $can.lastX = $can.lastY = null;
-                        lastX = e.clientX - $can.offset().left;
-                        lastY = e.clientY - $can.offset().top + $(document).scrollTop();
-                    }
-                    draw(e.clientX - $can.offset().left, 
-                        e.clientY - $can.offset().top + $(document).scrollTop(),true);
+                if (lastX == null || lastY == null ){
+                    $can.lastX = $can.lastY = null;
+                    lastX = e.clientX - $can.offset().left;
+                    lastY = e.clientY - $can.offset().top + $(document).scrollTop();
                 }
+                draw(e.clientX - $can.offset().left, 
+                    e.clientY - $can.offset().top + $(document).scrollTop(),true,isclean);
                 return false;
             }
             return false;
@@ -114,11 +111,12 @@ var html =
         });
     };
 
-    function draw(x, y, isDown){
+    function draw(x, y, isDown, isclean){
         if (isDown) {
+            ctx.globalCompositeOperation = isclean ? "destination-out" : "source-over";
             ctx.beginPath();
             ctx.strokeStyle = 'black';
-            ctx.lineWidth = '5';
+            ctx.lineWidth = isclean ? 30 : 5;
             ctx.lineJoin = "round";
             ctx.moveTo(lastX, lastY);
             ctx.lineTo(x, y);
@@ -129,13 +127,6 @@ var html =
         lastY = y;
     };
 
-    function cleanRect(x,y,isDown){
-        if (isDown) {
-            ctx.clearRect(x-15, y-15, 30, 30);
-        }
-        lastX = x;
-        lastY = y;
-    };
     /* 旋转 */
     function rotateRight(){
         var obj = ctx.getImageData(0,0,_width, _height);
@@ -231,7 +222,10 @@ export default class WebCanvas extends Component {
   _clean(){
     this.post({action: 2})
   }
-
+  // 初始化画板
+  _init(){
+    this.post({action: '-1'})
+  }
 
   // 以url的形式添加背景
   _addImageUrl(data){
@@ -241,6 +235,10 @@ export default class WebCanvas extends Component {
   // 以base64的形式添加背景
   _addImageBase64(data){
     this.post({action: 5, data: data})
+  }
+
+  _addImage(data){
+    this.post({action: 4, data: data})
   }
 
   // 得到图片的base64形式
@@ -259,7 +257,11 @@ export default class WebCanvas extends Component {
 
   webviewload(){
     // alert('加载成功！')
-    this.webview.injectJavaScript('init_canvas('+this.props.width+', '+this.props.height+');');  
+    this.webview.injectJavaScript('init_canvas('+this.props.width+', '+this.props.height+');');
+
+    if (this.props.onLoad){
+      this.props.onLoad();
+    }
   }
 
   messageHandler(e){
@@ -271,7 +273,7 @@ export default class WebCanvas extends Component {
 
   render() {
     return (
-      <View style={{width:this.state.width, height:this.state.height}}>  
+      <View style={[styles.container, {width:this.state.width, height:this.state.height}]}>  
         <WebView 
           style={{width:this.state.width, height:this.state.height}}
           ref = {(w) => {this.webview = w}}
@@ -283,8 +285,18 @@ export default class WebCanvas extends Component {
           automaticallyAdjustContentInsets={true}
           scalesPageToFit={false}
           />
+          <TouchableOpacity onPress={()=>this.webview.reload()}>
+            <Text>刷新</Text>
+          </TouchableOpacity>
       </View>
     );
   }
 }
 
+const styles = StyleSheet.create({ 
+    container: {  
+        alignItems: 'flex-start',  
+        backgroundColor: 'green',
+
+    }
+});  
